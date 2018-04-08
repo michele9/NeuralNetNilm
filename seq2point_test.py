@@ -156,12 +156,14 @@ test_kwag = {
     'inputs': test_set_x, 
     'targets': test_set_y}
 
+offset = int(0.5*(params_appliance[args.appliance_name]['windowlength']-1.0))
 
-test_provider = NeuralNetNilm.DataProvider.DoubleSourceProvider(batchsize=-1,
-                                                                shuffle=False)
+test_provider = NeuralNetNilm.DataProvider.MyDoubleSourceProvider(batchsize=-1,
+                                                                  offset=offset,
+                                                                  shuffle=False)
 
 x = tf.placeholder(tf.float32, 
-                   shape=[None, 1, windowlength],
+                   shape=[None, windowlength],
                    name='x')
 y_ = tf.placeholder(tf.int64, shape=[None, 1], name='y_')
 
@@ -250,7 +252,6 @@ print('SAE:{0}'.format(nm.get_sae(ground_truth.flatten(), prediction.flatten(), 
 # save the prediction to files
 mean = params_appliance[args.appliance_name]['mean']
 std = params_appliance[args.appliance_name]['std']
-offset = int(0.5*(params_appliance[args.appliance_name]['windowlength']-1.0))
 savemains = test_set_x[offset:,0,0].flatten()*std + mean
 savegt = ground_truth.flatten()
 savepred = prediction.flatten()

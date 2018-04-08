@@ -219,6 +219,49 @@ class DoubleSourceProvider(object):
                 excerpt = slice(start_idx, start_idx + self.batchsize)
             yield inputs[excerpt], targets[excerpt]
 
+# -------------------------------------------------------------------------------------------------------------------
+class MyDoubleSourceProvider(object):
+
+    def __init__(self, batchsize, shuffle, offset):
+
+        self.batchsize = batchsize
+        self.shuffle = shuffle
+        self.offset = offset
+
+
+    def feed(self, inputs, targets):
+        assert len(inputs) == len(targets)
+        inputs = inputs.flatten()
+        targets = targets.flatten()
+
+        max_batchsize = inputs.size - 2 * self.offset
+
+        if self.batchsize == -1:
+            self.batchsize = len(inputs)
+
+        indices = np.arange(max_batchsize)
+        if self.shuffle:
+            np.random.shuffle(indices)
+
+        """
+        for start_idx in range(0, len(inputs) - self.batchsize + 1, self.batchsize):
+
+            if self.shuffle:
+                excerpt = indices[start_idx:start_idx + self.batchsize]
+            else:
+                excerpt = slice(start_idx, start_idx + self.batchsize)
+
+            yield inputs[excerpt], targets[excerpt]
+        """
+
+        for start_idx in range(0, max_batchsize, self.batchsize):
+            excerpt = indices[start_idx:start_idx + self.batchsize]
+
+            yield np.array([inputs[idx:idx + 2 * self.offset + 1] for idx in excerpt]),\
+                  targets[excerpt + self.offset].reshape(-1, 1)
+# -------------------------------------------------------------------------------------------------------------------
+
+
 
 class Transformer(object):
     
