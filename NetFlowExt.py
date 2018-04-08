@@ -266,14 +266,14 @@ def custompredict(sess, network, output_provider, x, fragment_size=1000, output_
         banum += 1
         X_out_a, gt_batch = batch
         # print 'hi', X_out_a.mean()
-        fra_num = X_out_a.shape[0] / fragment_size
+        fra_num = X_out_a.shape[0] // fragment_size
         offset = X_out_a.shape[0] % fragment_size
         final_output = np.zeros((X_out_a.shape[0], output_length))
         for fragment in range(fra_num):
             x_fra = X_out_a[fragment * fragment_size:(fragment + 1) * fragment_size]
             feed_dict = {x: x_fra, }
             #feed_dict.update(dp_dict)
-            final_output[fragment * fragment_size:(fragment + 1) * fragment_size] = sess.run(y_op, feed_dict=feed_dict).reshape(-1,output_length)
+            final_output[fragment * fragment_size:(fragment + 1) * fragment_size] = sess.run(y_op, feed_dict=feed_dict).reshape(-1, output_length)
 
         if offset > 0:
             feed_dict = {x: X_out_a[-offset:], }

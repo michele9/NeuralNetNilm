@@ -54,7 +54,7 @@ def get_arguments():
                         help='The batch size of training examples')
     parser.add_argument('--n_epoch',
                         type=int,
-                        default=50,
+                        default=2,
                         help='The number of epoches.')
     parser.add_argument('--save_model',
                         type=int,
@@ -139,6 +139,11 @@ def load_dataset():
 # load the data set
 tra_set_x, tra_set_y, val_set_x,  val_set_y = load_dataset()
 
+tra_set_x = tra_set_x[0:1000]
+tra_set_y = tra_set_y[0:1000]
+val_set_x = val_set_x[0:1000]
+val_set_y = val_set_x[0:1000]
+
 # get the window length of the training examples
 windowlength = params_appliance[args.appliance_name]['windowlength']
 
@@ -157,10 +162,13 @@ val_kwag = {
     'targets': val_set_y,
     'flatten':False}
 
-tra_provider = DoubleSourceSlider(batchsize = args.batchsize,
-                                                 shuffle = True, offset=offset)
-val_provider = DoubleSourceSlider(batchsize = 5000,
-                                                 shuffle = False, offset=offset)
+tra_provider = DoubleSourceSlider(batchsize=args.batchsize,
+                                  shuffle=True,
+                                  offset=offset)
+
+val_provider = DoubleSourceSlider(batchsize=5000,
+                                  shuffle=False,
+                                  offset=offset)
 
 
 x = tf.placeholder(tf.float32, 

@@ -157,8 +157,8 @@ test_kwag = {
     'targets': test_set_y}
 
 
-test_provider = NeuralNetNilm.DataProvider.DoubleSourceProvider(batchsize = -1,
-                                                 shuffle = False)
+test_provider = NeuralNetNilm.DataProvider.DoubleSourceProvider(batchsize=-1,
+                                                                shuffle=False)
 
 x = tf.placeholder(tf.float32, 
                    shape=[None, 1, windowlength],
@@ -209,13 +209,13 @@ print(model.summary())
 y = model.outputs
 
 
-sess.run(tf.initialize_all_variables())
+sess.run(tf.global_variables_initializer())
 
 param_file = 'cnn_s2p_' + args.appliance_name + '_pointnet_model'
 model.load_weights(param_file + '_weights.h5')
 
 test_prediction = nf.custompredict(sess=sess, 
-                                   network=network, 
+                                   network=model,
                                    output_provider=test_provider,
                                    x=x,
                                    fragment_size=args.nosOfWindows, 
