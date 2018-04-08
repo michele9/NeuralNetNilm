@@ -44,7 +44,7 @@ def get_arguments():
                         help='the name of target appliance')
     parser.add_argument('--datadir',
                         type=str,
-                        default='../data/uk-dale/testdata/',
+                        default='./data/uk-dale/testdata/',
                         help='this is the directory of the training samples')
     parser.add_argument('--batchsize',
                         type=int,
