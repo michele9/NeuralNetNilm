@@ -28,13 +28,19 @@ Created on Thu Dec  1 15:00:27 2016
 ############################################################
 """
 
-import NetFlowExt as nf
+import NeuralNetNilm.NetFlowExt as nf
 import tensorflow as tf
-import tensorlayer as tl
+from keras.models import Model
+from keras.layers import Input
+from keras.layers import Dense
+from keras.layers import Conv2D
+from keras.layers import Flatten
+from keras.layers import Reshape
+from keras.losses import mean_squared_error
 import numpy as np
-import DataProvider
+import NeuralNetNilm.DataProvider
 import argparse
-import nilm_metric as nm
+import NeuralNetNilm.nilm_metric as nm
 import matplotlib.pyplot as plt
 
 def remove_space(string):
@@ -126,8 +132,9 @@ params_appliance = {'kettle':{'windowlength':599,
                                       's2s_length':2000}}
     
 args = get_arguments()
+
 def load_dataset():
-    app = args.datadir + args.appliance_name +'/' +'building2_'+ args.appliance_name
+    app = args.datadir + args.appliance_name + '/' + 'building2_' + args.appliance_name
     test_set_x = np.load(app+'_test_x.npy')  
     test_set_y = np.load(app+'_test_y.npy')  
     ground_truth = np.load(app+'_test_gt.npy')  
@@ -150,7 +157,7 @@ test_kwag = {
     'targets': test_set_y}
 
 
-test_provider = DataProvider.DoubleSourceProvider(batchsize = -1, 
+test_provider = NeuralNetNilm.DataProvider.DoubleSourceProvider(batchsize = -1,
                                                  shuffle = False)
 
 x = tf.placeholder(tf.float32, 
@@ -158,54 +165,51 @@ x = tf.placeholder(tf.float32,
                    name='x')
 y_ = tf.placeholder(tf.int64, shape=[None, 1], name='y_')
 
-network = tl.layers.InputLayer(x, name='input_layer')
-network = tl.layers.ReshapeLayer(network,
-                                 shape=(-1, windowlength, 1, 1))
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[10, 1, 1, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn1')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[8, 1, 30, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn2')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[6, 1, 30, 40],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn3')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 40, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn4')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 50, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn5')
-network = tl.layers.FlattenLayer(network,
-                                 name='flatten')
-network = tl.layers.DenseLayer(network,
-                               n_units=1024,
-                               act = tf.nn.relu,
-                               name='dense2')
-network = tl.layers.DenseLayer(network,
-                               n_units=1,
-                               act=tf.identity,
-                               name='output_layer')
 
-y = network.outputs
+# Keras Network
+inp = Input(tensor=x)
+
+reshape = Reshape((-1, 599, 1),
+                  )(inp)
+
+cnn1 = Conv2D(30, kernel_size=(10, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(reshape)
+
+cnn2 = Conv2D(30, kernel_size=(8, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn1)
+
+cnn3 = Conv2D(40, kernel_size=(6, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn2)
+
+cnn4 = Conv2D(50, kernel_size=(5, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn3)
+
+flat = Flatten()(cnn4)
+
+d = Dense(1024, activation='relu')(flat)
+
+d_out = Dense(1, activation='relu')(d)
+
+model = Model(inputs=inp, outputs=d_out)
+
+print(model.summary())
+
+y = model.outputs
 
 
-train_params = network.all_params
+#train_params = network.all_params
 sess.run(tf.initialize_all_variables())
 
 param_file = 'cnn'+args.appliance_name+'_pointnet_model.npz'

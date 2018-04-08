@@ -14,12 +14,19 @@
 # Thirty-Second AAAI Conference on Articial Intelligence (AAAI-18), Feb. 2-7, 2018.
 ############################################################
 
-import NetFlowExt as nf
-import tensorflow as tf
-import tensorlayer as tl
 import numpy as np
-import DataProvider
+import tensorflow as tf
+from keras.models import Model
+from keras.layers import Input
+from keras.layers import Dense
+from keras.layers import Conv2D
+from keras.layers import Flatten
+from keras.layers import Reshape
+from keras.losses import mean_squared_error
 import argparse
+from NeuralNetNilm.DataProvider import DoubleSourceSlider
+import NeuralNetNilm.NetFlowExt as nf
+
 
 # only one GPU is visible to current task.
 CUDA_VISIBLE_DEVICES=0 
@@ -110,7 +117,7 @@ params_appliance = {'kettle':{'windowlength':599,
                                       's2s_length':2000}}
                                       
 args = get_arguments()
-print args.appliance_name
+print(args.appliance_name)
 appliance_name = args.appliance_name
 def load_dataset():   
     tra_x = args.datadir+args.appliance_name+'_mains_'+'tra_small' #save path for mains
@@ -150,9 +157,9 @@ val_kwag = {
     'targets': val_set_y,
     'flatten':False}
 
-tra_provider = DataProvider.DoubleSourceSlider(batchsize = args.batchsize, 
+tra_provider = DoubleSourceSlider(batchsize = args.batchsize,
                                                  shuffle = True, offset=offset)
-val_provider = DataProvider.DoubleSourceSlider(batchsize = 5000, 
+val_provider = DoubleSourceSlider(batchsize = 5000,
                                                  shuffle = False, offset=offset)
 
 
@@ -161,68 +168,70 @@ x = tf.placeholder(tf.float32,
                    name='x')
 y_ = tf.placeholder(tf.float32, shape=[None, 1], name='y_')
 
-network = tl.layers.InputLayer(x, name='input_layer')
-network = tl.layers.ReshapeLayer(network,
-                                 shape=(-1, windowlength, 1, 1))
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[10, 1, 1, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn1')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[8, 1, 30, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn2')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[6, 1, 30, 40],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn3')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 40, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn4')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 50, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn5')
-network = tl.layers.FlattenLayer(network,
-                                 name='flatten')
+# Network
+inp = Input(tensor=x)
 
-# network = tl.layers.DenseLayer(network,
-#                                n_units=1024,
-#                                act = tf.nn.relu,
-#                                name='dense2')
-network = tl.layers.DenseLayer(network,
-                               n_units=1,
-                               act=tf.identity,
-                               name='output_layer')
+reshape = Reshape((-1, 599, 1),
+                  )(inp)
 
+cnn1 = Conv2D(30, kernel_size=(10, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(reshape)
 
-y = network.outputs
-cost = tl.cost.mean_squared_error(y, y_)
-train_params = network.all_params
-train_op = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999,
-                            epsilon=1e-08, use_locking=False).minimize(cost, var_list=train_params)
+cnn2 = Conv2D(30, kernel_size=(8, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn1)
+
+cnn3 = Conv2D(40, kernel_size=(6, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn2)
+
+cnn4 = Conv2D(50, kernel_size=(5, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn3)
+
+flat = Flatten()(cnn4)
+
+d = Dense(1024, activation='relu')(flat)
+
+d_out = Dense(1, activation='relu')(d)
+
+model = Model(inputs=inp, outputs=d_out)
+
+print(model.summary())
+
+y = model.outputs
+
+cost = tf.reduce_mean(tf.reduce_mean(tf.squared_difference(y, y_), 1))
+
+#train_params = network.all_params
+train_op = tf.train.AdamOptimizer(learning_rate=0.001,
+                                  beta1=0.9,
+                                  beta2=0.999,
+                                  epsilon=1e-08,
+                                  use_locking=False).minimize(cost,
+                                                              #var_list=train_params
+                                                              )
 
 # initialize all variables
 #sess.run(tf.initialize_all_variables())
 sess.run(tf.global_variables_initializer())
 # params = tl.files.load_npz(path='', name='cnn_lstm_model.npz')
 # tl.files.assign_params(sess, params, network)
-print 'set sucessful'
+print('set sucessful')
 
 save_path = './cnn'+appliance_name+'_pointnet_model'
+
 nf.customfit(sess = sess, 
-             network = network, 
+             network = model,
              cost = cost, 
              train_op = train_op, 
              tra_provider = tra_provider, 
