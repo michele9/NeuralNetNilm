@@ -1,7 +1,7 @@
-import tensorlayer as tl
+
 import numpy as np
 import time
-
+from keras import backend as K
 
 
 def dict_to_one(dp_dict={}):
@@ -24,10 +24,12 @@ def sigmoid(x):
 def modelsaver(network, path, epoch_identifier=None):
 
     if epoch_identifier:
-        ifile = path + '_' + str(epoch_identifier)+'.npz'
+        ifile = path + '_' + str(epoch_identifier)
     else:
-        ifile = path + '.npz'
-    tl.files.save_npz(network.all_params, name=ifile)
+        ifile = path
+
+    network.save(ifile + '.h5')
+    network.save_weights(ifile + '_weights' + '.h5')
 
 
 def customfit(sess, 
@@ -89,13 +91,13 @@ def customfit(sess,
     start_time_begin = time.time()
     for epoch in range(n_epoch):
         #start_time = time.time()
-        loss_ep = 0;
+        loss_ep = 0
         n_step = 0
 
         for batch in tra_provider.feed(**tra_kwag):
             X_train_a, y_train_a = batch
             feed_dict = {x: X_train_a, y_: y_train_a}
-            feed_dict.update(network.all_drop)  # enable noise layers
+            #feed_dict.update(network.all_drop)  # enable noise layers
             loss, _ = sess.run([cost, train_op], feed_dict=feed_dict)
             loss_ep += loss
             n_step += 1
@@ -108,15 +110,15 @@ def customfit(sess,
                 train_loss, train_acc, n_batch_train = 0, 0, 0
                 for batch in tra_provider.feed(**tra_kwag):
                     X_train_a, y_train_a = batch
-                    dp_dict = dict_to_one(network.all_drop)  # disable noise layers
+                    #dp_dict = dict_to_one(network.all_drop)  # disable noise layers
                     feed_dict = {x: X_train_a, y_: y_train_a}
-                    feed_dict.update(dp_dict)
+                    #feed_dict.update(dp_dict)
                     if acc is not None:
                         err, ac = sess.run([cost, acc], feed_dict=feed_dict)
                         train_acc += ac
                     else:
                         err = sess.run(cost, feed_dict=feed_dict)
-                    train_loss += err;
+                    train_loss += err
                     n_batch_train += 1
                 #print("   train loss: %f" % (train_loss / n_batch))
                 # print (train_loss, n_batch)
@@ -126,15 +128,15 @@ def customfit(sess,
 
                 for batch in val_provider.feed(**val_kwag):
                     X_val_a, y_val_a = batch
-                    dp_dict = dict_to_one(network.all_drop)  # disable noise layers
+                    #dp_dict = dict_to_one(network.all_drop)  # disable noise layers
                     feed_dict = {x: X_val_a, y_: y_val_a}
-                    feed_dict.update(dp_dict)
+                    #feed_dict.update(dp_dict)
                     if acc is not None:
                         err, ac = sess.run([cost, acc], feed_dict=feed_dict)
                         val_acc += ac
                     else:
                         err = sess.run(cost, feed_dict=feed_dict)
-                    val_loss += err;
+                    val_loss += err
                     n_batch_val += 1
                 #print("   val loss: %f" % (val_loss / n_batch))
                 #if acc is not None:
@@ -252,7 +254,7 @@ def custompredict(sess, network, output_provider, x, fragment_size=1000, output_
             the input
         y_op : placeholder
     """
-    dp_dict = dict_to_one(network.all_drop)  # disable noise layers
+    #dp_dict = dict_to_one(network.all_drop)  # disable noise layers
 
     if y_op is None:
         y_op = network.outputs
@@ -267,15 +269,15 @@ def custompredict(sess, network, output_provider, x, fragment_size=1000, output_
         fra_num = X_out_a.shape[0] / fragment_size
         offset = X_out_a.shape[0] % fragment_size
         final_output = np.zeros((X_out_a.shape[0], output_length))
-        for fragment in xrange(fra_num):
+        for fragment in range(fra_num):
             x_fra = X_out_a[fragment * fragment_size:(fragment + 1) * fragment_size]
             feed_dict = {x: x_fra, }
-            feed_dict.update(dp_dict)
+            #feed_dict.update(dp_dict)
             final_output[fragment * fragment_size:(fragment + 1) * fragment_size] = sess.run(y_op, feed_dict=feed_dict).reshape(-1,output_length)
 
         if offset > 0:
             feed_dict = {x: X_out_a[-offset:], }
-            feed_dict.update(dp_dict)
+            #feed_dict.update(dp_dict)
             final_output[-offset:] = sess.run(y_op, feed_dict=feed_dict).reshape(-1,output_length)
         output_container.append(final_output)
         gt.append(gt_batch)
@@ -319,7 +321,7 @@ def custompredict_add(sess, network, output_provider, x, seqlength, fragment_siz
         fra_num = X_out_a.shape[0] / fragment_size
         offset = X_out_a.shape[0] % fragment_size
         # final_output = np.zeros((X_out_a.shape[0], output_length))
-        for fragment in xrange(fra_num):
+        for fragment in range(fra_num):
             x_fra = X_out_a[fragment * fragment_size:(fragment + 1) * fragment_size]
             feed_dict = {x: x_fra, }
             feed_dict.update(dp_dict)
