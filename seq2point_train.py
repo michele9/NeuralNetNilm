@@ -228,7 +228,7 @@ sess.run(tf.global_variables_initializer())
 # tl.files.assign_params(sess, params, network)
 print('set sucessful')
 
-save_path = './cnn'+appliance_name+'_pointnet_model'
+save_path = './cnn_s2p_'+appliance_name+'_pointnet_model'
 
 nf.customfit(sess = sess, 
              network = model,

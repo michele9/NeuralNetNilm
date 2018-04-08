@@ -14,12 +14,18 @@
 # Thirty-Second AAAI Conference on Articial Intelligence (AAAI-18), Feb. 2-7, 2018.
 ############################################################
 
-import NetFlowExt as nf
+import NeuralNetNilm.NetFlowExt as nf
 import tensorflow as tf
-import tensorlayer as tl
+from keras.models import Model
+from keras.layers import Input
+from keras.layers import Dense
+from keras.layers import Conv2D
+from keras.layers import Flatten
+from keras.layers import Reshape
 import numpy as np
-import DataProvider
-import nilm_metric as nm
+import NeuralNetNilm.DataProvider
+import argparse
+import NeuralNetNilm.nilm_metric as nm
 from matplotlib.pylab import *
 
 def remove_space(string):
@@ -127,14 +133,14 @@ test_set_x, test_set_y, ground_truth = load_dataset()
 
 shuffle = False
 appliance_name = args.appliance_name
-mean = params_appliance[application]['mean']
-std = params_appliance[application]['std']
+mean = params_appliance[appliance_name]['mean']
+std = params_appliance[appliance_name]['std']
 sess = tf.InteractiveSession()
 
 
-windowlength = params_appliance[args.appliance_name]['windowlength']
+windowlength = params_appliance[appliance_name]['windowlength']
 
-offset = int(0.5*(params_appliance[application]['windowlength']-1.0))
+offset = int(0.5*(params_appliance[appliance_name]['windowlength']-1.0))
 
 test_kwag = {
     'inputs':test_set_x, 
@@ -146,7 +152,7 @@ test_kwag = {
 #     'targets': val_set_y,
 #     'flatten':False}
 
-test_provider = DataProvider.MultiApp_Slider(batchsize = batchsize, 
+test_provider = NeuralNetNilm.DataProvider.MultiApp_Slider(batchsize = batchsize,
                                                  shuffle = False, offset=offset)
 # val_provider = DataProvider.DoubleSourceSlider(batchsize = 5000, 
 #                                                  shuffle = False, offset=offset)
@@ -158,78 +164,67 @@ x = tf.placeholder(tf.float32,
 y_ = tf.placeholder(tf.float32, shape=[None, 1], name='y_')
 
 
+# Network
+inp = Input(tensor=x)
 
-##### cnn2
-network = tl.layers.InputLayer(x, name='input_layer')
-network = tl.layers.ReshapeLayer(network, 
-                                 shape=(-1, windowlength, 1, 1))
-network = tl.layers.Conv2dLayer(network,  
-                                act = tf.nn.relu, 
-                                shape = [10, 1, 1, 30],
-                                strides=[1, 1, 1, 1],  
-                                padding='SAME', 
-                                name = 'cnn1')
-network = tl.layers.Conv2dLayer(network,
-                                act = tf.nn.relu,
-                                shape = [8, 1, 30, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name = 'cnn2')
-network = tl.layers.Conv2dLayer(network,
-                                act = tf.nn.relu,
-                                shape = [6, 1, 30, 40],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name = 'cnn3')
-network = tl.layers.Conv2dLayer(network,
-                                act = tf.nn.relu,
-                                shape = [5, 1, 40, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name = 'cnn4')
-network = tl.layers.Conv2dLayer(network,
-                                act = tf.nn.relu,
-                                shape = [5, 1, 50, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name = 'cnn5')
-# network = tl.layers.Conv2dLayer(network,
-#                                 act = tf.nn.relu,
-#                                 shape = [5, 1, 50, 60],
-#                                 strides=[1, 1, 1, 1],
-#                                 padding='SAME',
-#                                 name = 'cnn6')
-network = tl.layers.FlattenLayer(network,
-                                 name='flatten')
-network = tl.layers.DenseLayer(network, 
-                               n_units=1024, 
-                               act = tf.nn.relu, 
-                               name='dense2')
-network = tl.layers.DenseLayer(network, 
-                               n_units=windowlength,
-                               act =tf.identity,
-                               name='output_layer')
+reshape = Reshape((-1, 599, 1),
+                  )(inp)
 
-y = network.outputs
-param_file = 'cnn'+app2+'_s2s_model_check.npz'
-print(param_file)
-#params = tl.files.load_npz(path='./', name=param_file)
-params = tl.files.load_npz(path='', name=param_file)
-tl.files.assign_params(sess, params, network)
+cnn1 = Conv2D(30, kernel_size=(10, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(reshape)
+
+cnn2 = Conv2D(30, kernel_size=(8, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn1)
+
+cnn3 = Conv2D(40, kernel_size=(6, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn2)
+
+cnn4 = Conv2D(50, kernel_size=(5, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn3)
+
+flat = Flatten()(cnn4)
+
+d = Dense(1024, activation='relu')(flat)
+
+d_out = Dense(windowlength, activation='relu')(d)
+
+model = Model(inputs=inp, outputs=d_out)
+
+print(model.summary())
+
+y = model.outputs
+
+
+param_file = 'cnn_s2s_' + args.appliance_name + '_pointnet_model'
+model.load_weights(param_file + '_weights.h5')
 print('params done')
 
 test_prediction = nf.custompredict_add(sess=sess,
-                                   network=network, 
-                                   output_provider = test_provider , 
-                                   x = x, 
-                                   fragment_size=window_size, 
-                                   output_length=windowlength, 
-                                   y_op=None, 
-                                   out_kwag=test_kwag,
-                                  seqlength = test_set_x.size, std = std, mean = mean)
+                                       network=model,
+                                       output_provider = test_provider ,
+                                       x = x,
+                                       fragment_size=windowlength,
+                                       output_length=windowlength,
+                                       y_op=None,
+                                       out_kwag=test_kwag,
+                                       seqlength = test_set_x.size,
+                                       std=std,
+                                       mean=mean)
 
-max_power = params_appliance[application]['max_on_power']
-threshold = params_appliance[application]['on_power_threshold']
+max_power = params_appliance[appliance_name]['max_on_power']
+threshold = params_appliance[appliance_name]['on_power_threshold']
 
 
 ground_truth = ground_truth[offset:-offset]*std+mean

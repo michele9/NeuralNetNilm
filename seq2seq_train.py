@@ -14,11 +14,16 @@
 # Thirty-Second AAAI Conference on Articial Intelligence (AAAI-18), Feb. 2-7, 2018.
 ############################################################
 
-import NetFlowExt as nf
+import NeuralNetNilm.NetFlowExt as nf
 import tensorflow as tf
-import tensorlayer as tl
+from keras.models import Model
+from keras.layers import Input
+from keras.layers import Dense
+from keras.layers import Conv2D
+from keras.layers import Flatten
+from keras.layers import Reshape
 import numpy as np
-import DataProvider
+import NeuralNetNilm.DataProvider
 import argparse
 
 # only one GPU is visible to current task.
@@ -110,7 +115,7 @@ params_appliance = {'kettle':{'windowlength':599,
                                       's2s_length':2000}}
                                       
 args = get_arguments()
-print args.appliance_name
+print(args.appliance_name)
 appliance_name = args.appliance_name
 def load_dataset():   
     tra_x = args.datadir+args.appliance_name+'_mains_'+'tra_small' #save path for mains
@@ -138,7 +143,7 @@ windowlength = params_appliance[args.appliance_name]['windowlength']
 sess = tf.InteractiveSession()
 
 
-offset = int(0.5*(params_appliance[application]['windowlength']-1.0))
+offset = int(0.5*(params_appliance[appliance_name]['windowlength']-1.0))
 
 tra_kwag = {
     'inputs': tra_set_x,
@@ -155,10 +160,10 @@ val_kwag = {
 # val_provider = DataProvider.DoubleSourceSlider(batchsize = 5000,
 #                                                  shuffle = False, offset=offset)
 
-tra_provider = DataProvider.S2S_Slider(batchsize = batchsize,
-                                                 shuffle = True, length = params_appliance[application]['windowlength'])
-val_provider = DataProvider.S2S_Slider(batchsize = 5000,
-                                                 shuffle = False, length = params_appliance[application]['windowlength'])
+tra_provider = NeuralNetNilm.DataProvider.S2S_Slider(batchsize = args.batchsize,
+                                                 shuffle = True, length = params_appliance[appliance_name]['windowlength'])
+val_provider = NeuralNetNilm.DataProvider.S2S_Slider(batchsize = 5000,
+                                                 shuffle = False, length = params_appliance[appliance_name]['windowlength'])
 
 
 x = tf.placeholder(tf.float32,
@@ -166,78 +171,79 @@ x = tf.placeholder(tf.float32,
                    name='x')
 y_ = tf.placeholder(tf.float32, shape=[None, windowlength], name='y_')
 
-network = tl.layers.InputLayer(x, name='input_layer')
-network = tl.layers.ReshapeLayer(network,
-                                 shape=(-1, windowlength, 1, 1))
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[10, 1, 1, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn1')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[8, 1, 30, 30],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn2')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[6, 1, 30, 40],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn3')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 40, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn4')
-network = tl.layers.Conv2dLayer(network,
-                                act=tf.nn.relu,
-                                shape=[5, 1, 50, 50],
-                                strides=[1, 1, 1, 1],
-                                padding='SAME',
-                                name='cnn5')
-network = tl.layers.FlattenLayer(network,
-                                 name='flatten')
-network = tl.layers.DenseLayer(network,
-                               n_units=1024,
-                               act = tf.nn.relu,
-                               name='dense2')
-network = tl.layers.DenseLayer(network,
-                               n_units=params_appliance[application]['windowlength'],
-                               act = tf.identity,
-                               name='output_layer')
+# Network
+inp = Input(tensor=x)
 
+reshape = Reshape((-1, 599, 1),
+                  )(inp)
 
-y = network.outputs
-cost = tl.cost.mean_squared_error(y, y_)
-train_params = network.all_params
-train_op = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999,
-                                  epsilon=1e-08, use_locking=False).minimize(cost, var_list=train_params)
+cnn1 = Conv2D(30, kernel_size=(10, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(reshape)
+
+cnn2 = Conv2D(30, kernel_size=(8, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn1)
+
+cnn3 = Conv2D(40, kernel_size=(6, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn2)
+
+cnn4 = Conv2D(50, kernel_size=(5, 1),
+              strides=(1, 1),
+              padding='same',
+              activation='relu',
+              )(cnn3)
+
+flat = Flatten()(cnn4)
+
+d = Dense(1024, activation='relu')(flat)
+
+d_out = Dense(windowlength, activation='relu')(d)
+
+model = Model(inputs=inp, outputs=d_out)
+
+print(model.summary())
+
+y = model.outputs
+
+cost = tf.reduce_mean(tf.reduce_mean(tf.squared_difference(y, y_), 1))
+#train_params = network.all_params
+train_op = tf.train.AdamOptimizer(learning_rate=0.001,
+                                  beta1=0.9,
+                                  beta2=0.999,
+                                  epsilon=1e-08,
+                                  use_locking=False).minimize(cost,
+                                                              #var_list=train_params
+                                                              )
 
 # initialize all variables
 sess.run(tf.global_variables_initializer())
 # params = tl.files.load_npz(path='', name='cnn_lstm_model.npz')
 # tl.files.assign_params(sess, params, network)
-# print 'set sucessful'
+print('set sucessful')
 
-# save_path = './cnn'+appliance_name+'_pointnet_model'
-'
+save_path = './cnn_s2s_' + appliance_name + '_pointnet_model'
+
 
 nf.customfit(sess = sess,
-             network = network,
+             network = model,
              cost = cost,
              train_op = train_op,
              tra_provider = tra_provider,
              x = x,
              y_ = y_,
              acc=None,
-             n_epoch= epoch,
+             n_epoch= args.n_epoch,
              print_freq=1,
              val_provider=val_provider,
-             save_model=saver,
+             save_model=args.save_model,
              tra_kwag=tra_kwag,
              val_kwag=val_kwag ,
              save_path=save_path,
