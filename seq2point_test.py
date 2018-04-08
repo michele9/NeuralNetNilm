@@ -209,17 +209,15 @@ print(model.summary())
 y = model.outputs
 
 
-#train_params = network.all_params
 sess.run(tf.initialize_all_variables())
 
-param_file = 'cnn'+args.appliance_name+'_pointnet_model.npz'
-params = tl.files.load_npz(path='', name=param_file)
-tl.files.assign_params(sess, params, network)
+param_file = 'cnn_s2p_' + args.appliance_name + '_pointnet_model'
+model.load_weights(param_file + '_weights.h5')
 
 test_prediction = nf.custompredict(sess=sess, 
                                    network=network, 
-                                   output_provider = test_provider , 
-                                   x = x, 
+                                   output_provider=test_provider,
+                                   x=x,
                                    fragment_size=args.nosOfWindows, 
                                    output_length=1, 
                                    y_op=None, 
