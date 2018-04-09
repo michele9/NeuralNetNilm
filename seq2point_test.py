@@ -147,6 +147,10 @@ def load_dataset():
 
 test_set_x, test_set_y, ground_truth = load_dataset()
 
+offset = int(0.5*(params_appliance[args.appliance_name]['windowlength']-1.0))
+
+ground_truth = ground_truth[0:-1 - 2 * offset]
+
 shuffle = False
 windowlength = params_appliance[args.appliance_name]['windowlength']
 
@@ -156,7 +160,6 @@ test_kwag = {
     'inputs': test_set_x, 
     'targets': test_set_y}
 
-offset = int(0.5*(params_appliance[args.appliance_name]['windowlength']-1.0))
 
 test_provider = NeuralNetNilm.DataProvider.MyDoubleSourceProvider(batchsize=-1,
                                                                   offset=offset,
@@ -225,6 +228,7 @@ test_prediction = nf.custompredict(sess=sess,
                                    y_op=None, 
                                    out_kwag=test_kwag)
 
+
 max_power = params_appliance[args.appliance_name]['max_on_power']
 threshold = params_appliance[args.appliance_name]['on_power_threshold']
 mean = params_appliance[args.appliance_name]['mean']
@@ -252,19 +256,19 @@ print('SAE:{0}'.format(nm.get_sae(ground_truth.flatten(), prediction.flatten(), 
 # save the prediction to files
 mean = params_appliance[args.appliance_name]['mean']
 std = params_appliance[args.appliance_name]['std']
-savemains = test_set_x[offset:,0,0].flatten()*std + mean
+savemains = test_set_x[0:-1-2*offset].flatten()*std + mean
 savegt = ground_truth.flatten()
 savepred = prediction.flatten()
 
-save_name_y_pred = 'results/'+'pointnet_building2_'+args.appliance_name+'_pred.npy' #save path for mains
-save_name_y_gt = 'results/'+'pointnet_building2_'+args.appliance_name+'_gt.npy'#save path for target
-save_name_mains = 'results/'+'pointnet_building2_'+args.appliance_name+'_mains.npy'#save path for target
+save_name_y_pred = './results/'+'pointnet_building2_'+args.appliance_name+'_pred.npy' #save path for mains
+save_name_y_gt = './results/'+'pointnet_building2_'+args.appliance_name+'_gt.npy'#save path for target
+save_name_mains = './results/'+'pointnet_building2_'+args.appliance_name+'_mains.npy'#save path for target
 np.save(save_name_y_pred, savepred)
 np.save(save_name_y_gt,savegt)
 np.save(save_name_mains,savemains)
 print('size: x={0}, y={0}, gt={0}'.format(np.shape(savemains), np.shape(savepred), np.shape(savegt)))
 
-plt.plot(savemains,color='k',linewidth=3.0)
-plt.plot(ground_truth,color='r',linewidth=2.0)
-plt.plot(prediction,color='b',linewidth=1.5)
+plt.plot(savemains, color='k', linewidth=3.0)
+plt.plot(ground_truth,color='r', linewidth=2.0)
+plt.plot(prediction, color='b', linewidth=1.5)
 plt.show()

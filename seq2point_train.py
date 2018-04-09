@@ -139,11 +139,6 @@ def load_dataset():
 # load the data set
 tra_set_x, tra_set_y, val_set_x,  val_set_y = load_dataset()
 
-tra_set_x = tra_set_x[0:1000]
-tra_set_y = tra_set_y[0:1000]
-val_set_x = val_set_x[0:1000]
-val_set_y = val_set_x[0:1000]
-
 # get the window length of the training examples
 windowlength = params_appliance[args.appliance_name]['windowlength']
 

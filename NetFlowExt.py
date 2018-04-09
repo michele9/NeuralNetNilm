@@ -262,7 +262,7 @@ def custompredict(sess, network, output_provider, x, fragment_size=1000, output_
     gt = []
     banum = 0
     for batch in output_provider.feed(**out_kwag):
-        # print banum
+        print(banum)
         banum += 1
         X_out_a, gt_batch = batch
         # print 'hi', X_out_a.mean()
@@ -272,13 +272,17 @@ def custompredict(sess, network, output_provider, x, fragment_size=1000, output_
         for fragment in range(fra_num):
             x_fra = X_out_a[fragment * fragment_size:(fragment + 1) * fragment_size]
             feed_dict = {x: x_fra, }
-            #feed_dict.update(dp_dict)
-            final_output[fragment * fragment_size:(fragment + 1) * fragment_size] = sess.run(y_op, feed_dict=feed_dict).reshape(-1, output_length)
+            output = sess.run(y_op, feed_dict=feed_dict)
+            output_array = np.array(output[0]).reshape(-1, output_length)
+            final_output[fragment * fragment_size:(fragment + 1) * fragment_size] = output_array
 
         if offset > 0:
             feed_dict = {x: X_out_a[-offset:], }
             #feed_dict.update(dp_dict)
-            final_output[-offset:] = sess.run(y_op, feed_dict=feed_dict).reshape(-1,output_length)
+
+            output = sess.run(y_op, feed_dict=feed_dict)
+            output_array = np.array(output[0]).reshape(-1, output_length)
+            final_output[-offset:] = output_array
         output_container.append(final_output)
         gt.append(gt_batch)
         # print 'hello', final_output.mean()
