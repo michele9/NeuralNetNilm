@@ -24,7 +24,7 @@ from keras.layers import Flatten
 from keras.layers import Reshape
 from keras.losses import mean_squared_error
 import argparse
-from NeuralNetNilm.DataProvider import DoubleSourceSlider
+import NeuralNetNilm.DataProvider
 import NeuralNetNilm.NetFlowExt as nf
 
 
@@ -157,11 +157,11 @@ val_kwag = {
     'targets': val_set_y,
     'flatten':False}
 
-tra_provider = DoubleSourceSlider(batchsize=args.batchsize,
+tra_provider = NeuralNetNilm.DataProvider.DoubleSourceSlider(batchsize=args.batchsize,
                                   shuffle=True,
                                   offset=offset)
 
-val_provider = DoubleSourceSlider(batchsize=5000,
+val_provider = NeuralNetNilm.DataProvider.DoubleSourceSlider(batchsize=5000,
                                   shuffle=False,
                                   offset=offset)
 

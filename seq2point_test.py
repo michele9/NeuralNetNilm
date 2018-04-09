@@ -161,9 +161,9 @@ test_kwag = {
     'targets': test_set_y}
 
 
-test_provider = NeuralNetNilm.DataProvider.MyDoubleSourceProvider(batchsize=-1,
-                                                                  offset=offset,
-                                                                  shuffle=False)
+test_provider = NeuralNetNilm.DataProvider.DoubleSourceProvider2(batchsize=-1,
+                                                                 offset=offset,
+                                                                 shuffle=False)
 
 x = tf.placeholder(tf.float32, 
                    shape=[None, windowlength],

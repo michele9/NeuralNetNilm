@@ -219,8 +219,8 @@ class DoubleSourceProvider(object):
                 excerpt = slice(start_idx, start_idx + self.batchsize)
             yield inputs[excerpt], targets[excerpt]
 
-# -------------------------------------------------------------------------------------------------------------------
-class MyDoubleSourceProvider(object):
+# -------------------------------------------------update 9/04/2018-----------------------------------------------------
+class DoubleSourceProvider2(object):
 
     def __init__(self, batchsize, shuffle, offset):
 
@@ -242,17 +242,6 @@ class MyDoubleSourceProvider(object):
         indices = np.arange(max_batchsize)
         if self.shuffle:
             np.random.shuffle(indices)
-
-        """
-        for start_idx in range(0, len(inputs) - self.batchsize + 1, self.batchsize):
-
-            if self.shuffle:
-                excerpt = indices[start_idx:start_idx + self.batchsize]
-            else:
-                excerpt = slice(start_idx, start_idx + self.batchsize)
-
-            yield inputs[excerpt], targets[excerpt]
-        """
 
         for start_idx in range(0, max_batchsize, self.batchsize):
             excerpt = indices[start_idx:start_idx + self.batchsize]
